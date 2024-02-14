@@ -2,6 +2,7 @@ use std::{env::Args, fmt, net::SocketAddrV4};
 
 use log::warn;
 
+/// The config of server
 pub struct Config {
     pub address: SocketAddrV4,
 }
@@ -9,6 +10,7 @@ pub struct Config {
 impl Config {
     const DEFAULT_PORT: u16 = 1234;
 
+    /// Create new instance of `Config`
     pub fn new(mut args: Args) -> Config {
         args.next();
 

@@ -1,3 +1,7 @@
+//! # chatting
+//!
+//! A simple chat server written in Rust
+
 use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc};
 
 use futures::{SinkExt, StreamExt};
@@ -13,7 +17,6 @@ pub use config::Config;
 
 pub mod config;
 
-// type Tx = mpsc::UnboundedSender<String>;
 type Tx = mpsc::UnboundedSender<String>;
 
 struct Server {
