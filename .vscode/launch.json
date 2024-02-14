@@ -1,0 +1,64 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'chatting'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=chatting"
+                ],
+                "filter": {
+                    "name": "chatting",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'chatting'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=chatting",
+                    "--package=chatting"
+                ],
+                "filter": {
+                    "name": "chatting",
+                    "kind": "bin"
+                }
+            },
+            "args": ["9090"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'chatting'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=chatting",
+                    "--package=chatting"
+                ],
+                "filter": {
+                    "name": "chatting",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
