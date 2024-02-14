@@ -2,6 +2,11 @@
 //!
 //! A simple chat server written in Rust
 
+pub mod config;
+pub mod utils;
+
+pub use config::{CliArgs, Config};
+
 use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc};
 
 use futures::{SinkExt, StreamExt};
@@ -12,10 +17,6 @@ use tokio::{
     sync::{mpsc, RwLock},
 };
 use tokio_util::codec::{Framed, LinesCodec};
-
-pub use config::Config;
-
-pub mod config;
 
 type Tx = mpsc::UnboundedSender<String>;
 
@@ -31,14 +32,15 @@ impl Server {
     }
 
     pub async fn run(&mut self, config: &config::Config) -> Result<(), Box<dyn Error>> {
-        let listener = TcpListener::bind(config.address).await?;
+        let listener = TcpListener::bind(config.addr).await?;
 
         loop {
             let (stream, addr) = listener.accept().await?;
             let clients = self.clients.clone();
+            let speed_rate = config.speed_rate;
 
             tokio::spawn(async move {
-                if let Err(e) = Self::handle_connection(clients, stream, addr).await {
+                if let Err(e) = Self::handle_connection(clients, stream, addr, speed_rate).await {
                     error!("client {} occurred error, error: {}", addr, e);
                 }
             });
@@ -49,11 +51,12 @@ impl Server {
         clients: Arc<RwLock<HashMap<SocketAddr, Tx>>>,
         stream: TcpStream,
         addr: SocketAddr,
+        rate_limit: u16,
     ) -> Result<(), Box<dyn Error>> {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let mut frame = Framed::new(stream, LinesCodec::new());
 
-        frame.send("Welcome to Mitsuha's chat room.").await?;
+        Self::server_send("Welcome to Mitsuha's chat room.", &mut frame).await?;
 
         let name = Self::get_username(&mut frame).await?;
 
@@ -72,6 +75,9 @@ impl Server {
 
         clients.write().await.insert(addr, tx);
 
+        // Initialize speed counter
+        let counter = utils::Counter::new(rate_limit);
+
         loop {
             tokio::select! {
                 Some(message) = rx.recv() => {
@@ -80,7 +86,13 @@ impl Server {
 
                 result = frame.next() => match result {
                     Some(Ok(message)) => {
-                        Self::broadcast(&clients, &addr, &name, &message,false).await?;
+                        if counter.check().await {
+                            Self::broadcast(&clients, &addr, &name, &message,false).await?;
+                        } else {
+                            Self::server_send("Oops, you have reached rate limit, please retry after 1 minute.",&mut frame).await?;
+                        }
+
+                        counter.add().await;
                     }
 
                     _ => break,
@@ -103,7 +115,7 @@ impl Server {
     async fn get_username(
         frame: &mut Framed<TcpStream, LinesCodec>,
     ) -> Result<String, Box<dyn Error>> {
-        frame.send("Please enter your name: ").await?;
+        Self::server_send("Please enter your name: ", frame).await?;
 
         let name = match frame.next().await {
             Some(Ok(n)) => n,
@@ -123,9 +135,7 @@ impl Server {
         let answer = param1 as u16 + param2 as u16;
         let captcha = format!("{} + {} = ?", param1, param2);
 
-        frame
-            .send(format!("Please solve the captcha: {}", captcha))
-            .await?;
+        Self::server_send(&format!("Please solve the captcha: {}", captcha), frame).await?;
 
         let input: u16 = match frame.next().await {
             Some(Ok(n)) => n.parse()?,
@@ -137,9 +147,9 @@ impl Server {
         let ret = input == answer;
 
         if ret {
-            frame.send("Correct captcha, welcome!").await?;
+            Self::server_send("Correct captcha, welcome!", frame).await?;
         } else {
-            frame.send("WRONG CAPTCHA, DISCONNECTED!").await?;
+            Self::server_send("WRONG CAPTCHA, DISCONNECTED!", frame).await?;
         }
 
         frame.send("\n").await?;
@@ -172,6 +182,14 @@ impl Server {
             }
         }
 
+        Ok(())
+    }
+
+    async fn server_send(
+        message: &str,
+        frame: &mut Framed<TcpStream, LinesCodec>,
+    ) -> Result<(), Box<dyn Error>> {
+        frame.send(format!("[SERVER] {}", message)).await?;
         Ok(())
     }
 }

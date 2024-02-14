@@ -1,43 +1,45 @@
-use std::{env::Args, fmt, net::SocketAddrV4};
+use std::{fmt, net::SocketAddrV4};
 
-use log::warn;
+use clap::{arg, command, Parser};
 
 /// The config of server
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = "A simple chat server written in Rust")]
+pub struct CliArgs {
+    /// Listen port
+    #[arg(default_value_t = 1234)]
+    pub port: u16,
+
+    /// Speak speed rate (in minutes)
+    #[arg(short, long, default_value_t = 5)]
+    pub speed_rate: u16,
+}
+
 pub struct Config {
-    pub address: SocketAddrV4,
+    pub addr: SocketAddrV4,
+
+    pub speed_rate: u16,
 }
 
 impl Config {
-    const DEFAULT_PORT: u16 = 1234;
-
     /// Create new instance of `Config`
-    pub fn new(mut args: Args) -> Config {
-        args.next();
-
-        let port = args
-            .next()
-            .unwrap_or_else(|| {
-                warn!("port not provided, defaulting to {}", Self::DEFAULT_PORT);
-                Self::DEFAULT_PORT.to_string()
-            })
-            .parse()
-            .unwrap_or_else(|e| {
-                warn!(
-                    "can not parse port, error: {}, defaulting to {}",
-                    e,
-                    Self::DEFAULT_PORT
-                );
-                Self::DEFAULT_PORT
-            });
+    pub fn new(args: CliArgs) -> Config {
+        let port = args.port;
+        let speed_rate = args.speed_rate;
 
         return Config {
-            address: SocketAddrV4::new("0.0.0.0".parse().unwrap(), port),
+            addr: SocketAddrV4::new("0.0.0.0".parse().unwrap(), port),
+            speed_rate,
         };
     }
 }
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(listening addr: {})", self.address)
+        write!(
+            f,
+            "(listening addr: {}, speed rate: {})",
+            self.addr, self.speed_rate
+        )
     }
 }
