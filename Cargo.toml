@@ -17,7 +17,7 @@ clap = { version = "4.5.0", features = ["derive"] }
 flexi_logger = "0.27.4"
 futures = "0.3.30"
 log = "0.4.20"
-rand = "0.8.5"
+rand = "0.8.6"
 serde = {version = "1.0.196", features = ["serde_derive", "derive"]}
 tokio = {version = "1.36.0", features = ["full"]}
 tokio-stream = {version = "0.1.14", features = ["full"]}
